@@ -20,7 +20,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 object IOTSparkStreaming {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-      .set("spark.cassandra.connection.host", "DIN16000309")
+      .set("spark.cassandra.connection.host", "localhost")
       .setAppName("IOT")
       .setMaster("local[*]")
 
@@ -32,12 +32,12 @@ object IOTSparkStreaming {
 
     Logger.getRootLogger().setLevel(Level.ERROR)
 
-    val kafkaParams = Map("metadata.broker.list" -> "DIN16000309:9092")
+    val kafkaParams = Map("metadata.broker.list" -> "localhost:9092")
 
     //topics is the set to which this Spark instance will listen.
     val topics = List("fitbit", "new-user-notification", "sales").toSet
 
-    val kafkaOutputBrokers = "DIN16000309:9092"
+    val kafkaOutputBrokers = "localhost:9092"
     val kafkaOutputTopic = "mapData"
     val keySpaceName = "iot"
     val tableName = "user_details"
@@ -48,7 +48,7 @@ object IOTSparkStreaming {
     val fitbitStream = lines.filter(_.split(",")(0) == "fitbit")
 
     warningNotification(fitbitStream, kafkaOutputTopic = "warningNotification", kafkaOutputBrokers)
-
+    userHistory(fitbitStream, keySpaceName)
     val newUserStream = lines.filter(_.split(",")(0) == "new-user-notification")
       .map(line => {
         val array = line.split(",")
@@ -87,33 +87,6 @@ object IOTSparkStreaming {
     ssc.checkpoint("C:/checkpoint/")
     ssc.start()
     ssc.awaitTermination()
-  }
-
-  def mapData(fitbitStream: DStream[String], kafkaOutputTopic: String, kafkaOutputBrokers: String): Unit = {
-    val data = fitbitStream
-      .map(line => {
-        val array = line.split(",")
-        val userID = array(2).trim
-        val lat = array(3).trim
-        val long = array(4).trim
-        val pulse = (array(5).trim.toDouble + 0.5).toInt
-        val temp = array(6).trim.toDouble
-        (userID, lat, long, pulse, temp)
-      })
-
-    data.foreachRDD(rdd => {
-      rdd.foreachPartition(partition => {
-
-        val producer = new KafkaProducer[String, String](setupKafkaProducer(kafkaOutputBrokers))
-        partition.foreach(record => {
-          val data = record.toString
-          val message = new ProducerRecord[String, String](kafkaOutputTopic, data)
-          producer.send(message)
-
-        })
-        producer.close()
-      })
-    })
   }
 
   def warningNotification(fitbitStream: DStream[String], kafkaOutputTopic: String, kafkaOutputBrokers: String): Unit = {
@@ -157,6 +130,24 @@ object IOTSparkStreaming {
     })
   }
 
+  def userHistory(fitbitStream: DStream[String], keySpaceName: String): Unit = {
+    fitbitStream
+      .map(line => {
+        val array = line.split(",")
+        val simulationTime = array(1).trim
+        val userID = array(2).trim
+        val lat = array(3).trim
+        val long = array(4).trim
+        (simulationTime, userID, lat, long)
+      }).foreachRDD(rdd => {
+      rdd.foreachPartition(partition => {
+        partition.foreach(record => {
+          println(record.toString)
+        })
+      })
+    })
+  }
+
   def userLatLongTable(fitbitStream: DStream[String], keySpaceName: String): Unit = {
     fitbitStream
       .map(line => {
@@ -166,6 +157,33 @@ object IOTSparkStreaming {
         val long = array(4).trim
         (userID, lat, long)
       }).saveToCassandra(keySpaceName, tableName = "latest_location", SomeColumns("user_id", "lat", "long"))
+  }
+
+  def mapData(fitbitStream: DStream[String], kafkaOutputTopic: String, kafkaOutputBrokers: String): Unit = {
+    val data = fitbitStream
+      .map(line => {
+        val array = line.split(",")
+        val userID = array(2).trim
+        val lat = array(3).trim
+        val long = array(4).trim
+        val pulse = (array(5).trim.toDouble + 0.5).toInt
+        val temp = array(6).trim.toDouble
+        (userID, lat, long, pulse, temp)
+      })
+
+    data.foreachRDD(rdd => {
+      rdd.foreachPartition(partition => {
+
+        val producer = new KafkaProducer[String, String](setupKafkaProducer(kafkaOutputBrokers))
+        partition.foreach(record => {
+          val data = record.toString
+          val message = new ProducerRecord[String, String](kafkaOutputTopic, data)
+          producer.send(message)
+
+        })
+        producer.close()
+      })
+    })
   }
 
   def setupKafkaProducer(kafkaOutputBrokers: String): util.HashMap[String, Object] = {
