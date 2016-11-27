@@ -30,6 +30,8 @@ create table iot.sales(
     count int
 );
 
+
+
 create table iot.userHistory(
     user_id text,
     date text,

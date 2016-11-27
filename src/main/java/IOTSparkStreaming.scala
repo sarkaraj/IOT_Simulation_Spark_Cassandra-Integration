@@ -76,6 +76,7 @@ object IOTSparkStreaming {
         "bp_dia", "bp_sys", "category", "device_id", "gender", "height", "weight"))
 
 
+
     warningNotification(fitbitStream, kafkaOutputTopic = "warningNotification", kafkaOutputBrokers)
     userHistory(fitbitStream, keySpaceName, tableNameUserHistory)
     obtainActivityLevel(sc, fitbitStream, kafkaOutputBrokers)

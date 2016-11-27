@@ -68,6 +68,7 @@ object test {
     //    ssc.start()
     //    ssc.awaitTermination()
 
+
   }
 
   def setupKafkaProducer(kafkaOutputBrokers: String): util.HashMap[String, Object] = {
