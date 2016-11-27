@@ -15,7 +15,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 
 /**
-  * Created by soumyaka on 11/7/2016.
+  * Created by rajsarka on 11/7/2016.
   */
 object IOTSparkStreaming {
   def main(args: Array[String]): Unit = {
@@ -41,6 +41,7 @@ object IOTSparkStreaming {
     val kafkaOutputTopic = "mapData"
     val keySpaceName = "iot"
     val tableName = "user_details"
+    val tableNameUserHistory = "userhistory"
 
     val lines = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](
       ssc, kafkaParams, topics).map(_._2)
@@ -48,7 +49,7 @@ object IOTSparkStreaming {
     val fitbitStream = lines.filter(_.split(",")(0) == "fitbit")
 
     warningNotification(fitbitStream, kafkaOutputTopic = "warningNotification", kafkaOutputBrokers)
-    userHistory(fitbitStream, keySpaceName)
+    userHistory(fitbitStream, keySpaceName, tableNameUserHistory)
     val newUserStream = lines.filter(_.split(",")(0) == "new-user-notification")
       .map(line => {
         val array = line.split(",")
@@ -67,7 +68,8 @@ object IOTSparkStreaming {
         (userID, deviceID, age, bfp, bmi, bpCat, bpDia,
           bpSys, category, gender, height, weight)
         // updateUserTable(spark, updateRow)
-      }).saveToCassandra(keySpaceName, tableName, SomeColumns("user_id", "device_id", "age", "bfp", "bmi", "bp_cat",
+      })
+      .saveToCassandra(keySpaceName, tableName, SomeColumns("user_id", "device_id", "age", "bfp", "bmi", "bp_cat",
       "bp_dia", "bp_sys", "category", "gender", "height", "weight"))
 
 
@@ -83,8 +85,7 @@ object IOTSparkStreaming {
     //mapData(fitbitStream, kafkaOutputTopic, kafkaOutputBrokers)
 
 
-
-    ssc.checkpoint("C:/checkpoint/")
+    ssc.checkpoint("/Users/Ritabhari/IdeaProjects/IOT_Simulation_Spark_Cassandra-Integration/checkpoint/")
     ssc.start()
     ssc.awaitTermination()
   }
@@ -130,22 +131,24 @@ object IOTSparkStreaming {
     })
   }
 
-  def userHistory(fitbitStream: DStream[String], keySpaceName: String): Unit = {
+  def userHistory(fitbitStream: DStream[String], keySpaceName: String, tableName: String): Unit = {
     fitbitStream
       .map(line => {
         val array = line.split(",")
-        val simulationTime = array(1).trim
+        val Array(simulationDate, simulationTime) = array(1).trim.split(" ")
         val userID = array(2).trim
         val lat = array(3).trim
         val long = array(4).trim
-        (simulationTime, userID, lat, long)
-      }).foreachRDD(rdd => {
-      rdd.foreachPartition(partition => {
-        partition.foreach(record => {
-          println(record.toString)
-        })
+        (userID, simulationDate, simulationTime, lat, long)
       })
-    })
+      .saveToCassandra(keySpaceName, tableName, SomeColumns("user_id", "date", "time", "lat", "long"))
+    /*      .foreachRDD(rdd => {
+          rdd.foreachPartition(partition => {
+            partition.foreach(record => {
+              println(record.toString)
+            })
+          })
+        })*/
   }
 
   def userLatLongTable(fitbitStream: DStream[String], keySpaceName: String): Unit = {

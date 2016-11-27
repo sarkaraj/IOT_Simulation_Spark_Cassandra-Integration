@@ -1,4 +1,4 @@
-create table IOT.user_details(
+create table iot.user_details(
   age int,
   gender text,
   category text,
@@ -28,4 +28,13 @@ truncate table iot.sales;
 create table iot.sales(
     date text primary key,
     count int
+);
+
+create table iot.userHistory(
+    user_id text,
+    date text,
+    time text,
+    lat text,
+    long text,
+    PRIMARY KEY((user_id, date), time)
 );
