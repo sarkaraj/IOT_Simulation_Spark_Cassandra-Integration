@@ -9,9 +9,8 @@ create table iot.user_details(
   bp_cat text,
   bp_sys double,
   bp_dia double,
-  user_id text,
-  device_id text,
-  PRIMARY KEY(user_id, device_id)
+  user_id text PRIMARY KEY,
+  device_id text
 );
 
 create table iot.latest_location(
@@ -23,6 +22,7 @@ create table iot.latest_location(
 truncate table iot.user_details;
 truncate table iot.latest_location;
 truncate table iot.sales;
+truncate table iot.userHistory;
 
 
 create table iot.sales(
@@ -36,5 +36,7 @@ create table iot.userHistory(
     time text,
     lat text,
     long text,
+    pulse double,
+    temp double,
     PRIMARY KEY((user_id, date), time)
 );
