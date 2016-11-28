@@ -26,6 +26,7 @@ object IOTSparkStreaming {
 
     val spark = SparkSession.builder()
       .config(conf)
+      .config("spark.sql.warehouse.dir", "file:///C:/temp")
       .getOrCreate()
     val sc = spark.sparkContext
     val ssc = new StreamingContext(sc, Seconds(1))
@@ -94,7 +95,7 @@ object IOTSparkStreaming {
     //mapData(fitbitStream, kafkaOutputTopic, kafkaOutputBrokers)
 
 
-    ssc.checkpoint("/Users/Ritabhari/IdeaProjects/IOT_Simulation_Spark_Cassandra-Integration/checkpoint/")
+    ssc.checkpoint("./checkpoint/")
     ssc.start()
     ssc.awaitTermination()
   }
@@ -167,7 +168,7 @@ object IOTSparkStreaming {
       .map(line => {
         val user_id = line._1
         val machineTimeStamp = line._2
-        val activityCategory = obtainActivityData(sc, user_id)
+        val activityCategory = "Test" //obtainActivityData(sc, user_id)
 
         (user_id, machineTimeStamp, activityCategory)
       })
@@ -185,11 +186,6 @@ object IOTSparkStreaming {
       })
     })
 
-  }
-
-  def obtainActivityData(sc: SparkContextFunctions, user_id: String): String = {
-    val cassandraRDD = sc.cassandraTable("iot", "user_details")
-    cassandraRDD.select("category").where("user_id = ?", user_id).first().get[String]("category")
   }
 
   def userHistory(fitbitStream: DStream[String], keySpaceName: String, tableName: String): Unit = {
@@ -223,6 +219,11 @@ object IOTSparkStreaming {
         val long = array(4).trim
         (userID, lat, long)
       }).saveToCassandra(keySpaceName, tableName = "latest_location", SomeColumns("user_id", "lat", "long"))
+  }
+
+  def obtainActivityData(sc: SparkContextFunctions, user_id: String): String = {
+    val cassandraRDD = sc.cassandraTable("iot", "user_details")
+    cassandraRDD.where("user_id = ?", user_id).first().get[String]("category")
   }
 
   def mapData(fitbitStream: DStream[String], kafkaOutputTopic: String, kafkaOutputBrokers: String): Unit = {

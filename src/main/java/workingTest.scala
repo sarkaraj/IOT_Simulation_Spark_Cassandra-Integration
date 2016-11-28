@@ -1,5 +1,3 @@
-package main.java
-
 import java.util
 
 import com.datastax.spark.connector._
@@ -17,7 +15,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 /**
   * Created by rajsarka on 11/7/2016.
   */
-object test {
+object workingTest {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .set("spark.cassandra.connection.host", "DIN16000309")
@@ -209,15 +207,6 @@ object test {
 
   }
 
-  def setupKafkaProducer(kafkaOutputBrokers: String): util.HashMap[String, Object] = {
-    val props = new util.HashMap[String, Object]()
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaOutputBrokers)
-    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-      "org.apache.kafka.common.serialization.StringSerializer")
-    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-      "org.apache.kafka.common.serialization.StringSerializer")
-    props
-  }
 
   def userHistory(fitbitStream: DStream[String], keySpaceName: String, tableName: String): Unit = {
     fitbitStream
@@ -279,6 +268,16 @@ object test {
         producer.close()
       })
     })
+  }
+
+  def setupKafkaProducer(kafkaOutputBrokers: String): util.HashMap[String, Object] = {
+    val props = new util.HashMap[String, Object]()
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaOutputBrokers)
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+      "org.apache.kafka.common.serialization.StringSerializer")
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+      "org.apache.kafka.common.serialization.StringSerializer")
+    props
   }
 
 }
